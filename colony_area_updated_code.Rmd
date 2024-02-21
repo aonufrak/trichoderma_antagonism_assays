@@ -1,0 +1,619 @@
+---
+title: "Trichoderma Antagonism Assays"
+author: "Aaron Onufrak"
+date: "2023-03-22"
+output: rmdformats::downcute
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Packages
+
+```{r,warning=FALSE,message=FALSE}
+library(drc)
+library(tidyr)
+library(ggplot2)
+library(ggpubr)
+library(car)
+library(data.table)
+```
+
+# Custom Functions
+
+## Function 01: Percent Inhibition tabulator
+
+This function is used to calculate percent inhibition from a data frame that contains the colony area information for multiple isolates across multiple treatments. The function takes the following arguments:
+
+1. **df**: The data frame (in wide format) that contains the isolate names and the treatments. 
+2. **isolate_names**: This is the list of trichoderma isolates used in the juglone assays. If these are present then the function will tabulate percent inhibition for the juglone assays. 
+3. **concentration_list**: This is the list of metabolite percentages. If these are present then the function will tabulate percent inhibition for the poison agar assays. 
+
+```{r}
+percent_inhibition_tabulator<-function(df,isolate_names=NULL,concentration_list=NULL){
+  if(is.null(concentration_list)==TRUE){
+  percent_inhibition_frames<-data.frame()
+for(i in 1:length(isolate_names)){
+  regexp<-paste0("\\b",isolate_names[[i]],"\\b") # This will make it so that grep only selects the exact isolate name
+  individ_isolate_data<-df[grep(regexp,df$Isolate),] # Subsetting so that only a single isolate is being considered
+  isolate_zero_avg<-mean(individ_isolate_data$`0`,na.rm = TRUE) # Calculating the mean colony area for the selected isolate
+  percent_inhibition_isolate<-100*((isolate_zero_avg-Filter(x=individ_isolate_data,f=is.numeric))/isolate_zero_avg) # Calculating percent inhibition
+  percent_inhibition_isolate_frame<-data.frame(isolate=isolate_names[[i]],replicate=individ_isolate_data["Replicate"], percent_inhibition_isolate) # Creating new data frame
+  colnames(percent_inhibition_isolate_frame)<-sub("X","",colnames(percent_inhibition_isolate_frame)) # Removing X's that show up in new column names
+  percent_inhibition_isolate_frame_long<-gather(percent_inhibition_isolate_frame,Concentration,percent_inhibition,3:7)
+  percent_inhibition_frames<-rbind(percent_inhibition_frames,percent_inhibition_isolate_frame_long)
+}
+  return(percent_inhibition_frames)
+  # this will shunt into the version for the trichoderma poison agar analyses
+} else {
+  poison_inhibition_frames<-data.frame()
+for(i in 1:length(poison_concentrations)){
+  poison_inhibition_by_gm_iso<-df[grep(concentration_list[[i]], df$Percentage),] # This will grep the metabolite percentage 
+  isolate_zero_avg<-mean(poison_inhibition_by_gm_iso$PDA,na.rm = TRUE) # This will select the PDA treatment control for mean calculation
+  percent_inhibition_isolate<-((isolate_zero_avg-Filter(x=poison_inhibition_by_gm_iso,is.numeric))/isolate_zero_avg)*100 # Calculates the percent inhibition selection only numeric columns in the data frame. 
+  percent_inhibition_isolate_df<-data.frame(replicate=poison_inhibition_by_gm_iso$Replicate,Percentage=poison_inhibition_by_gm_iso$Percentage,Isolate=poison_inhibition_by_gm_iso$Isolate,percent_inhibition_isolate)
+  percent_inhibition_isolate_frame_long<-gather(percent_inhibition_isolate_df,treatment,percent_inhibition,4:length(percent_inhibition_isolate_df))
+  poison_inhibition_frames<-rbind(poison_inhibition_frames,percent_inhibition_isolate_frame_long)
+}
+  return(poison_inhibition_frames)
+}
+}
+```
+
+# Outline
+The following code details the analyses performed for the following laboratory assays:
+
+1. *Beauveria bassiana* and *Trichoderma* spp. juglone assays. 
+2. *Trichoderma* spp. and *Geosmithia morbida* dual-plate antagonism assays. 
+3. *Trichoderma* spp. metabolite assays against *Geosmithia morbida*
+
+
+# Part 01: Juglone assays
+
+## Data Import
+
+Importing data into R. The following two data frames are used for the analyses:
+
+1. **b_bassiana_juglone_responses.txt**: contain the colony areas of *B. bassiana* strain GHA to juglone 3 days after inoculation. 
+2. **trichoderma_juglone_responses.txt**: contain the colony areas of the 15 *Trichoderma* isolates to juglone. 
+
+All colony areas used in the study were measured using [ImageJ](https://imagej.net/ij/). 
+
+```{r}
+# Importing Beauveria colony area
+beauveria.juglone<-read.table("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/raw_data/b_bassiana_juglone_responses.txt",sep='\t',header=TRUE)
+
+# Importing Trichoderma colony area data
+trichoderma.juglone<-read.table("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/raw_data/trichoderma_juglone_responses.txt",sep='\t',header=TRUE)
+```
+
+## Part 01.1: Beauveria juglone data analyses
+
+Below I do all of the statistical analyses for *B. bassiana* strain GHA to juglone. The procedure goes as follows:
+
+1. Calculate the mean area of colonies grown on the now juglone control.
+2. Use the mean to calculate percent growth inhibition for the colonies on all of the juglone concentrations. We also include in our analyses the the negative control plates to account for the amount of variation in growth at the negative control. 
+3. Conduct a two-way ANOVA to detect significant differences in percent growth inhibition by juglone concentrations. 
+
+```{r}
+# Changing concentration to a factor
+beauveria.juglone$Concentration<-as.factor(beauveria.juglone$Concentration)
+
+# Omitting NAs from beauveria data
+beauveria.juglone_no_na<-na.omit(beauveria.juglone)
+
+# Converting table to wide format
+beauveria.juglone_no_na_wide<-spread(beauveria.juglone_no_na,Concentration,area)
+
+# Converting replicate to a factor so that it is not treated numerically.  
+beauveria.juglone_no_na_wide$Replicate<-as.character(beauveria.juglone_no_na_wide$Replicate)
+
+# Calculating average of acetone control. Setting na.rm to true to remove NA entries. 
+beauveria.juglone_no_na_control_average<-mean(beauveria.juglone_no_na_wide$`0`,na.rm = TRUE)
+
+# Calculating percent inhibition of colony growth
+beauveria.juglone_no_na_control_average_percent_inhibition<-100*((beauveria.juglone_no_na_control_average-Filter(x=beauveria.juglone_no_na_wide,f=is.numeric))/beauveria.juglone_no_na_control_average)
+
+# Converting table from wide format to long
+beauveria.juglone_no_na_control_average_percent_inhibition_long<-gather(beauveria.juglone_no_na_control_average_percent_inhibition,Concentration,percent_inhibition,1:5)
+
+# Sanity check to make sure number of rows is correct after omitting NAs
+nrow(na.omit(beauveria.juglone_no_na_control_average_percent_inhibition_long))
+
+# Removing NA values from the table
+beauveria.juglone_no_na_control_average_percent_inhibition_long<-na.omit(beauveria.juglone_no_na_control_average_percent_inhibition_long)
+
+# Converting concentration to a factor
+beauveria.juglone_no_na_control_average_percent_inhibition_long$Concentration<-as.factor(beauveria.juglone_no_na_control_average_percent_inhibition_long$Concentration)
+
+# Conducting ANOVA on Beauveria data 
+beauveria.juglone_percent_inhibition_aov<-aov(percent_inhibition~Concentration,beauveria.juglone_no_na_control_average_percent_inhibition_long,)
+
+# Assessing model assumpions
+par(mfrow=c(2,2))
+plot(beauveria.juglone_percent_inhibition_aov)
+
+# Doing a type III ANOVA to account for differences in sample sizes as a result of plug dislodging. 
+Anova(beauveria.juglone_percent_inhibition_aov,type="III")
+
+# Using tukeys post-hoc test to detect significant pair-wise differences
+beauveria.juglone_tukey_results<-TukeyHSD(beauveria.juglone_percent_inhibition_aov)
+beauveria.juglone_tukey_results 
+
+# Plotting results in ggplot
+beauveria_plot<-ggplot(data=beauveria.juglone_no_na_control_average_percent_inhibition_long,aes(x=Concentration,y=percent_inhibition,fill=Concentration))+
+geom_boxplot(outlier.shape=NA)+
+  geom_jitter()+
+  geom_hline(yintercept = c(0,50),linetype=2)+
+  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+  scale_y_continuous(limits=c(-100,100),breaks=c(-100,-75,-50,-25,0,25,50,75,100))+
+  geom_text(data=NULL,aes(x=1,y=100,label="A"),inherit.aes = FALSE)+
+  geom_text(data=NULL,aes(x=2,y=100,label="B"),inherit.aes = FALSE)+
+  geom_text(data=NULL,aes(x=3,y=100,label="C"),inherit.aes = FALSE)+
+  geom_text(data=NULL,aes(x=4,y=100,label="C"),inherit.aes = FALSE)+
+  geom_text(data=NULL,aes(x=5,y=100,label="C"),inherit.aes = FALSE)+
+  ylab("Percent Inhibition (%)")+
+  xlab("Concentration (mg/mL)")
+
+beauveria_plot
+```
+
+
+## Part 01.2: Trichoderma juglone data analyses
+
+Below I do all of the statistical analyses for 15 *Trichodmera* isolates to juglone. The procedure goes as follows:
+
+1. Calculate the mean area of colonies grown on the now juglone control.
+2. Use the mean to calculate percent growth inhibition for the colonies on all of the juglone concentrations. We also include in our analyses the the negative control plates to account for the amount of variation in growth at the negative control. 
+3. Conduct a two-way ANOVA to detect significant differences in percent growth inhibition by juglone concentrations. 
+
+```{r}
+# Determining the number of plugs that fell off of each isolate
+nrow(trichoderma.juglone[grep("^[^N].*Gm",trichoderma.juglone$Isolate,invert=TRUE),])
+nrow(na.omit(trichoderma.juglone[grep("^[^N].*Gm",trichoderma.juglone$Isolate, invert=TRUE),]))
+
+# Removing NAs
+trichoderma.juglone_no.na<-na.omit(trichoderma.juglone)
+
+# Converting the table to wide format
+trichoderma.juglone_no.na_wide<-spread(trichoderma.juglone_no.na,Concentration,Area)
+
+trichoderma.juglone_no.na_wide$Replicate<-as.character(trichoderma.juglone_no.na_wide$Replicate)
+
+# Parsing out Trichoderma isolate names
+trichoderma.isolate.names<-unique(trichoderma.juglone_no.na_wide$Isolate)
+
+# Calculating percent inhibition on a isolate basis
+trichoderma.juglone_inhibition_frames<-percent_inhibition_tabulator(isolate_names=trichoderma.isolate.names,df=trichoderma.juglone_no.na_wide)
+
+# Omitting NAs
+trichoderma.juglone_inhibition_frames<-na.omit(trichoderma.juglone_inhibition_frames)
+
+# Converting concentration to a factor
+trichoderma.juglone_inhibition_frames$Concentration<-as.factor(trichoderma.juglone_inhibition_frames$Concentration)
+
+# Conducting ANOVA
+trichoderma.juglone_percent_inhibition_aov<-aov(percent_inhibition~isolate*Concentration,trichoderma.juglone_inhibition_frames)
+
+# Assessing model assumptions
+par(mfrow=c(2,2))
+plot(trichoderma.juglone_percent_inhibition_aov)
+
+# Determining p-values 
+Anova(trichoderma.juglone_percent_inhibition_aov,type="III")
+tricho.tukey_results<-TukeyHSD(trichoderma.juglone_percent_inhibition_aov)
+
+# Pulling out post-hoc results per isolate
+
+# NGM36-1
+ngm36_1<-tricho.tukey_results$`isolate:Concentration`[grep("NGM36-1.*-NGM36-1.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+ngm36_1
+
+# Rootshield (AKA KRL-AG2)
+rootshield<-tricho.tukey_results$`isolate:Concentration`[grep("RootShield:.*-RootShield:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+rootshield
+
+# TN-26
+tn1_26<-tricho.tukey_results$`isolate:Concentration`[grep("TN1-26.*-TN1-26.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn1_26
+
+# TN1-2
+tn1_2<-tricho.tukey_results$`isolate:Concentration`[grep("TN1-2:.*-TN1-2:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn1_2
+
+# TN1-4
+tn1_4<-tricho.tukey_results$`isolate:Concentration`[grep("TN1-4:.*-TN1-4:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn1_4
+
+# TN1-66
+tn1_66<-tricho.tukey_results$`isolate:Concentration`[grep("TN1-66:.*-TN1-66:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn1_66
+
+#TN2-51
+tn2_51<-tricho.tukey_results$`isolate:Concentration`[grep("TN2-51:.*-TN2-51:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn2_51
+
+# TN3-2
+tn3_2<-tricho.tukey_results$`isolate:Concentration`[grep("TN3-2:.*-TN3-2:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn3_2
+
+# TN3-21
+tn3_21<-tricho.tukey_results$`isolate:Concentration`[grep("TN3-21:.*-TN3-21:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn3_21
+
+# TN3-49
+tn3_49<-tricho.tukey_results$`isolate:Concentration`[grep("TN3-49:.*-TN3-49:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn3_49
+
+# TN3-61
+tn3_61<-tricho.tukey_results$`isolate:Concentration`[grep("TN3-61:.*-TN3-61:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn3_61
+
+# TN4-40
+tn4_40<-tricho.tukey_results$`isolate:Concentration`[grep("TN4-40:.*-TN4-40:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn4_40
+
+# TN4-47
+tn4_47<-tricho.tukey_results$`isolate:Concentration`[grep("TN4-47:.*-TN4-47:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn4_47
+
+# TN5-34
+tn5_34<-tricho.tukey_results$`isolate:Concentration`[grep("TN5-34:.*-TN5-34:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn5_34
+
+# TN5-9
+tn5_9<-tricho.tukey_results$`isolate:Concentration`[grep("TN5-9:.*-TN5-9:.*",row.names(tricho.tukey_results$`isolate:Concentration`)),]
+tn5_9
+
+# Creating a data frame that includes the percent inhibition for B. bassiana that will be merged into the Trichoderma data frame for plotting.
+beauveria.juglone_no_na_control_average_percent_inhibition_long_df<-data.frame(isolate=rep("GHA",times=nrow(beauveria.juglone_no_na_control_average_percent_inhibition_long)),beauveria.juglone_no_na_control_average_percent_inhibition_long)
+
+# Merging the B. bassiana data frame in the Trichoderma frame
+beauveria.trichoderma.juglone_inhibition_frames<-rbind(beauveria.juglone_no_na_control_average_percent_inhibition_long_df,trichoderma.juglone_inhibition_frames[,grep("Replicate",colnames(trichoderma.juglone_inhibition_frames),invert=TRUE)])
+
+# Changing the name of RootShield to KRL-AG2 for consistency with the manuscript
+beauveria.trichoderma.juglone_inhibition_frames$isolate<-sub("RootShield","KRL-AG2",beauveria.trichoderma.juglone_inhibition_frames$isolate)
+
+# Importing a dataframe that contains the significance lettering based on the above tukey tests to add to ggplot
+tricho_juglone_sig_codes<-read.table("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/raw_data/trichoderma_sig_codes.txt",header=TRUE,sep='\t')
+
+# Converting concentration to factor
+tricho_juglone_sig_codes$Concentration<-as.factor(tricho_juglone_sig_codes$Concentration)
+
+# Plotting data in ggplot
+ggplot(data=beauveria.trichoderma.juglone_inhibition_frames,aes(x=Concentration,y=percent_inhibition,fill=Concentration))+
+geom_boxplot(outlier.shape=NA)+
+  geom_jitter()+
+  facet_wrap(.~isolate,nrow = 4,ncol=4)+
+  geom_hline(yintercept = c(0,50),linetype=2)+
+  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+ geom_text(data=tricho_juglone_sig_codes,aes(x=Concentration,y=110,label=Code),inherit.aes = FALSE)+
+  scale_y_continuous(limits=c(-50,110),breaks=c(-50,-25,0,25,50,75,100))+
+  ylab("Percent Inhibition (%)")+
+  xlab("Concentration (mg/mL)")
+
+
+```
+
+# Part 02: Dual-plate Antagonism Assays
+
+## Data Import
+
+Below I import the following data frames:
+
+1. **dual_plate_trial_01.txt**: Contains the antagonism ratings for the first trial of dual-plate assays.
+2. **dual_plate_trial_02.txt**: Contains the antagonism ratings for the second trial of dual-plate assays. 
+
+```{r}
+# Loading in first trial of dual plate assays
+dual_plate_trial_1<-read.table("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/raw_data/dual_plate_trial_01.txt",header=TRUE,sep='\t')
+
+# Loading in second trial of dual plate assays
+dual_plate_trial_2<-read.table("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/raw_data/dual_plate_trial_02.txt",header=TRUE,sep='\t')
+```
+
+## Part 02.1: Trial 1 of Dual-Plate Assays
+
+Below I plot the results for the first trial of dual-plate assays. This trial includes 15 different isolates of *Trichoderma* originally recovered in [Gazis et al. 2018](https://www.fs.usda.gov/psw/publications/seybold/psw_2018_seybold002_gazis.pdf).
+
+```{r,warning=FALSE,message=FALSE}
+# Changing name of rootshield isolate for consistency with manuscript
+dual_plate_trial_1$Isolate<-sub("Rootshield","KRL-AG2",dual_plate_trial_1$Isolate)
+
+# Plotting data in ggplot
+dual_plate_round_1<-ggplot(data=dual_plate_trial_1,aes(x=Rating))+
+ geom_histogram(color="black",binwidth = 0.5)+
+  geom_vline(xintercept = 2.5,linetype=2,color="red")+
+  facet_wrap(.~Isolate,scales="free_x",nrow =3 ,ncol=5)+
+    theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+  xlab("Antagonism Ranking")+
+  ylab("Count")+
+  scale_x_continuous(limits=c(0,5),breaks=c(1,2,3,4))+
+  scale_y_continuous(limits=c(0,5),breaks=c(1,2,3,4))+
+  coord_flip()
+
+dual_plate_round_1
+```
+
+## Part 02.2: Trial 2 of Dual-Plate Assays
+
+Below I plot the results for the second trial of dual-plate assays. This trial includes 6 different isolates of *Trichoderma* and 3 different isolates of *G. morbida*
+
+```{r,warning=FALSE,message=FALSE}
+# Adjusting isolate names for consistency
+dual_plate_trial_2$GM<-sub("CAGM17-1","CA Gm17-1",dual_plate_trial_2$GM)
+dual_plate_trial_2$GM<-sub("ORGM62-3","OR Gm62-3",dual_plate_trial_2$GM)
+dual_plate_trial_2$GM<-sub("TNGM17","TN Gm17",dual_plate_trial_2$GM)
+
+# Plotting data in ggplot
+dual_plate_round2<-ggplot(data=dual_plate_trial_2,aes(x=rating,fill=GM))+
+  geom_histogram(color="black",binwidth = 0.5)+
+ # geom_point(data=dual_plate_trial_2,position=position_dodge(width=0.75),aes(x=GM,y=rating))+
+geom_vline(xintercept = 2.5,linetype=2,color="red")+
+  facet_wrap(.~trichoderma,scales="free_x")+
+    theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+  xlab("Antagonism Ranking")+
+  ylab("Count")+
+  scale_x_continuous(limits=c(0,5),breaks=c(1,2,3,4))+
+  scale_y_continuous(limits=c(0,16),breaks=c(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15))+
+  coord_flip()
+  
+  dual_plate_round2
+
+
+ggarrange(dual_plate_round_1,dual_plate_round2,ncol=1,nrow=2,labels=c("A","B"))
+```
+
+# Part 03: Trichoderma Metabolite Assays
+
+Importing data into R. The following data frames are used for the analyses:
+
+1. **colony_area_poison_agar.txt**: contains the colony areas for each *G. morbida* x *Trichoderma* metabolite pairing across all three concentrations. 
+
+```{r}
+# Loading in the poison agar data
+poison_agar_area<-read.table("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/raw_data/colony_area_poison_agar.txt",header=TRUE,sep='\t',na.strings = "NA")
+```
+
+## Part 03.1: Trichoderma Metabolite Assays: Data Formatting
+
+```{r}
+# Determining numer of samples lost to plug dislodging
+nrow(poison_agar_area)
+nrow(na.omit(poison_agar_area))
+
+# Converting table to wide format
+poison_colony_area_jug_no.na_wide<-spread((poison_agar_area),Treatment,Area)
+
+# Converting replicate to a character so it is not interpreted numerically
+poison_colony_area_jug_no.na_wide$Replicate<-as.character(poison_colony_area_jug_no.na_wide$Replicate)
+
+# Converting percentage to a character so it is not interpreted numerically
+poison_colony_area_jug_no.na_wide$Percentage<-as.character(poison_colony_area_jug_no.na_wide$Percentage)
+
+# Creating a list of the metabolite concentrations used
+poison_concentrations<-unique(poison_colony_area_jug_no.na_wide$Percentage)
+
+# Creating a list of the G. morbida isolates used
+gm_isos<-unique(poison_colony_area_jug_no.na_wide$Isolate)
+
+# Creating a list object that consists of individual data frames for each G. morbida isolate
+poison_inhibition_frames<-data.frame()
+gm_isos_poison_inhibition<-list()
+for(x in 1:length(gm_isos)){
+  gm_isos_poison<-poison_colony_area_jug_no.na_wide[grep(gm_isos[[x]],poison_colony_area_jug_no.na_wide$Isolate),]
+  gm_isos_poison_inhibition<-append(gm_isos_poison_inhibition,list(gm_isos_poison))
+}
+
+
+# Applying the percent inhibition calculator function to the list of colony area data frame by G. morbida isolate
+poison_percent_inhibition_list<-lapply(X = gm_isos_poison_inhibition,FUN=percent_inhibition_tabulator,concentration_list = poison_concentrations)
+
+
+# Removing NA values
+poison_percent_inhibition_list<-lapply(poison_percent_inhibition_list,na.omit)
+
+# Binding the data frames stored in the list into a single data frame
+poison_percent_inhibition_df<-rbindlist(poison_percent_inhibition_list)
+
+# Creating new columns so that I can split treatments out by unautoclaved and autoclaved treatments
+
+# Creating a column that contains the isolate ID (used single letters to avoid biasing results)
+poison_percent_inhibition_df$tricho<-sub("^A|^U","",poison_percent_inhibition_df$treatment)
+
+# Creating a column that contains the heat treatment
+poison_percent_inhibition_df$heat<-sub("PDA","Autoclave",sub("^U.","Unautoclave",sub("^A.","Autoclave",poison_percent_inhibition_df$treatment)))
+
+# Updating isoalte names to match manuscript
+poison_percent_inhibition_df$Isolate<-sub("CA","CA Gm17-1",sub("TN","TN Gm17",sub("OR","OR Gm62-3",poison_percent_inhibition_df$Isolate)))
+
+# Substituting isolate IDs with the their actual names
+poison_percent_inhibition_df$iso_code<-poison_percent_inhibition_df$tricho
+poison_percent_inhibition_df$iso_code<-sub("^A","TN3-21",poison_percent_inhibition_df$iso_code)
+poison_percent_inhibition_df$iso_code<-sub("^B","TN4-47",poison_percent_inhibition_df$iso_code)
+poison_percent_inhibition_df$iso_code<-sub("^C","KRL-AG2",poison_percent_inhibition_df$iso_code)
+poison_percent_inhibition_df$iso_code<-sub("^D","TN4-40",poison_percent_inhibition_df$iso_code)
+poison_percent_inhibition_df$iso_code<-sub("^E","TN3-61",poison_percent_inhibition_df$iso_code)
+poison_percent_inhibition_df$iso_code<-sub("^F","TN1-66",poison_percent_inhibition_df$iso_code)
+
+# Adding percent signs to the end of the percentage values
+poison_percent_inhibition_df$Percentage<-sub("0","0%",poison_percent_inhibition_df$Percentage)
+
+# Creating an object for only the autoclaved samples 
+poison_percent_inhibition_autoclave<-poison_percent_inhibition_df[grep("Autoclave",poison_percent_inhibition_df$heat),]
+
+# Double checking the number of samples
+nrow(poison_percent_inhibition_autoclave)
+
+# Creating an object for only the non-autoclaved samples
+poison_percent_inhibition_unautoclave_no_pda<-poison_percent_inhibition_df[grep("Unautoclave",poison_percent_inhibition_df$heat),]
+poison_percent_inhibition_unautoclave<-rbind(poison_percent_inhibition_unautoclave_no_pda,poison_percent_inhibition_autoclave[grep("PDA",poison_percent_inhibition_autoclave$tricho),])
+```
+
+### Part 03.2 Autoclaved samples
+
+```{r}
+# Conducting an ANOVA on the autoclaved samples
+poison_anova_auto<-aov(percent_inhibition~tricho*Percentage*Isolate,poison_percent_inhibition_autoclave)
+
+# Checking model assumptions
+par(mfrow=c(2,2))
+plot(poison_anova_auto)
+
+# Extracting ANOVA results
+Anova(poison_anova_auto,type="III")
+
+# Determining pairwise significance using Tukey tests
+poison_tukey_results_auto<-TukeyHSD(poison_anova_auto)
+
+# Pulling out the significant results using grep for each metabolite percentage
+
+# 30%
+poison_30_auto<-poison_tukey_results_auto$`tricho:Percentage`[grep(".*30.*30.*",row.names(poison_tukey_results_auto$`tricho:Percentage`)),]
+poison_30_auto[poison_30_auto[,4]<0.05,]
+
+# 50%
+poison_50_auto<-poison_tukey_results_auto$`tricho:Percentage`[grep(".*50.*50.*",row.names(poison_tukey_results_auto$`tricho:Percentage`)),]
+poison_50_auto[poison_50_auto[,4]<0.05,]
+
+# 70%
+poison_70_auto<-poison_tukey_results_auto$`tricho:Percentage`[grep(".*70.*70.*",row.names(poison_tukey_results_auto$`tricho:Percentage`)),]
+poison_70_auto[poison_70_auto[,4]<0.05,]
+
+# Creating a data frame that has all of the significance lettering for ggplot
+sig_codes_auto<-data.frame(Percentage=c(rep("30%",7),rep("50%",7),rep("70%",7)),TI=c(rep(c("A","B","C","D","E","F","PDA"),3)),sig_code=c("A","B","CD","AD","A","C","A",
+                                                                                                                                         "CD","B","C","DE","AE","C","A",
+                                                                                                                                         "CD","B","CD","CD","D","C","A"))
+
+# Converting isolate IDs to a factor
+poison_percent_inhibition_autoclave$iso_code<-factor(poison_percent_inhibition_autoclave$iso_code,levels=c("TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66","PDA"))
+
+# Changing RootShield name for consistency with the manuscript
+poison_percent_inhibition_autoclave$tricho<-sub("RootShield","KRL-AG2",poison_percent_inhibition_autoclave$tricho)
+
+# Plotting results in ggplot
+autoclave_pi<-ggplot(data=poison_percent_inhibition_autoclave,aes(x=tricho,y=percent_inhibition,fill=iso_code))+
+geom_boxplot(outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(jitter.width = 0.05),color="black",aes(shape=Isolate))+
+  facet_wrap(.~Percentage,nrow = 1,ncol=3)+
+  geom_hline(yintercept = c(0,50),linetype=2)+
+  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+  geom_text(data=sig_codes_auto,aes(x=TI,y=105,label=sig_code),inherit.aes = FALSE)+
+  scale_x_discrete(labels=c("TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66","PDA"))+
+   guides(fill=guide_legend(title = "Trichoderma spp. Isolate"),shape=guide_legend(title="Geosmithia morbida Isolate"))+
+  xlab("Trichoderma spp. Isolate")+
+  ylab("Percent Inhibition (%)")
+autoclave_pi
+
+```
+
+### Part 03.3 Non-autoclaved samples 
+
+```{r}
+# Conducting an ANOVA on the unautoclaved samples
+poison_anova_unauto<-aov(percent_inhibition~tricho*Percentage*Isolate,poison_percent_inhibition_unautoclave)
+
+# Checking model assumptions
+par(mfrow=c(2,2))
+plot(poison_anova_unauto)
+
+# Extracting ANOVA results
+Anova(poison_anova_unauto,type="III")
+
+# Determining pairwise significance using Tukey tests
+poison_tukey_results_unauto<-TukeyHSD(poison_anova_unauto)
+
+# Pulling out the significant results using grep for each metabolite percentage
+
+# 30%
+poison_30_unauto<-poison_tukey_results_unauto$`tricho:Percentage`[grep(".*30.*30.*",row.names(poison_tukey_results_unauto$`tricho:Percentage`)),]
+poison_30_unauto[poison_30_unauto[,4]<0.05,]
+
+# 50%
+poison_50_unauto<-poison_tukey_results_unauto$`tricho:Percentage`[grep(".*50.*50.*",row.names(poison_tukey_results_unauto$`tricho:Percentage`)),]
+poison_50_unauto[poison_50_unauto[,4]<0.05,]
+
+# 70%
+poison_70_unauto<-poison_tukey_results_unauto$`tricho:Percentage`[grep(".*70.*70.*",row.names(poison_tukey_results_unauto$`tricho:Percentage`)),]
+poison_70_unauto[poison_70_unauto[,4]<0.05,]
+
+# Creating a data frame that has all of the significance lettering for ggplot
+sig_codes_unauto<-data.frame(Percentage=c(rep("30%",7),rep("50%",7),rep("70%",7)),TI=c(rep(c("A","B","C","D","E","F","PDA"),3)),sig_code=c("AD","B","CD","ACD","A","C","A",
+                                                                                                                                           "ACD","B","CD","ACD","ACD","C","A",
+                                                                                                                                           "D","B","C","C","AD","C","A"))
+
+# Converting isolate IDs to a factor
+poison_percent_inhibition_unautoclave$iso_code<-factor(poison_percent_inhibition_unautoclave$iso_code,levels=c("TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66","PDA"))
+
+# Changing RootShield name for consistency with the manuscript
+poison_percent_inhibition_unautoclave$tricho<-sub("RootShield","KRL-AG2",poison_percent_inhibition_unautoclave$tricho)
+
+# Plotting results in ggplot
+unautoclave_pi<-ggplot(data=poison_percent_inhibition_unautoclave,aes(x=tricho,y=percent_inhibition,fill=iso_code))+
+geom_boxplot(outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(jitter.width = 0.05),color="black",aes(shape=Isolate))+
+  facet_wrap(.~Percentage,nrow = 1,ncol=3)+
+  geom_hline(yintercept = c(0,50),linetype=2)+
+  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank(),axis.title.x = element_blank())+
+  geom_text(data=sig_codes_unauto,aes(x=TI,y=105,label=sig_code),inherit.aes = FALSE)+
+  scale_x_discrete(labels=c("TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66","PDA"))+
+  guides(fill=guide_legend(title = "Trichoderma spp. Isolate"),shape=guide_legend(title="Geosmithia morbida Isolate"))+
+   xlab("Trichoderma spp. Isolate")+
+  ylab("Percent Inhibition (%)")
+unautoclave_pi
+
+ggarrange(unautoclave_pi,autoclave_pi,nrow=2,common.legend = TRUE,labels=c("Non-autoclaved","Autoclaved"))
+
+```
+
+### Part 03.4 Assessing effects of heat treatments
+
+```{r,eval=FALSE}
+# Removing the PDA control because it does not receive heat treatment
+poison_percent_inhibition_df_no_pda<-poison_percent_inhibition_df[grep("PDA",poison_percent_inhibition_df$tricho,invert=TRUE),]
+
+# Performing ANOVA
+autoclave_aov<-aov(percent_inhibition~heat*tricho*Percentage+Isolate*tricho*Percentage,data=poison_percent_inhibition_df_no_pda)
+
+# Assessing model assumptions
+par(mfrow=c(2,2))
+plot(autoclave_aov)
+
+# Getting ANOVA summaries
+Anova(autoclave_aov,type="III")
+
+# Assessing pairwise signficant differences using tukey tests
+tukey_heat<-TukeyHSD(autoclave_aov)
+
+tukey_heat_tricho_perce<-as.data.frame(tukey_heat$`heat:tricho:Percentage`)
+tukey_heat_tricho_perce_sig<-tukey_heat_tricho_perce[tukey_heat_tricho_perce$`p adj`<0.05,]
+
+# Using grep to look at heat x G. 
+tukey_heat_tricho_perce_sig[grep("Unautoclave:A:.*-Autoclave:A:.*",row.names(tukey_heat_tricho_perce_sig)),]
+tukey_heat_tricho_perce_sig[grep("Unautoclave:B:.*-Autoclave:B:.*",row.names(tukey_heat_tricho_perce_sig)),]
+tukey_heat_tricho_perce_sig[grep("Unautoclave:C:.*-Autoclave:C:.*",row.names(tukey_heat_tricho_perce_sig)),]
+tukey_heat_tricho_perce_sig[grep("Unautoclave:D:.*-Autoclave:D:.*",row.names(tukey_heat_tricho_perce_sig)),]
+tukey_heat_tricho_perce_sig[grep("Unautoclave:E:.*-Autoclave:E:.*",row.names(tukey_heat_tricho_perce_sig)),]
+tukey_heat_tricho_perce_sig[grep("Unautoclave:F:.*-Autoclave:F:.*",row.names(tukey_heat_tricho_perce_sig)),]
+
+# Creating a data frame of significant codings for ggplot
+sig_codes_heat_trt<-data.frame(Percentage=c(rep(c("30%","50%","70%"),12)),iso_code=c(rep("KRL-AG2",6),rep("TN1-66",6),rep("TN3-21",6),rep("TN3-61",6),rep("TN4-40",6),rep("TN4-47",6)),sig_code=c(NA,"B",NA,NA,"A",NA,rep(NA,6),NA,NA,"A",NA,NA,"B",rep(NA,18)),heat=rep(c("Autoclave","Unautoclave"),18))
+
+# Plotting data in ggplot
+ggplot(data=poison_percent_inhibition_df_no_pda,aes(x=Percentage,y=percent_inhibition,fill=heat))+
+geom_boxplot(outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(jitter.width = 0.05),color="black",aes(shape=Isolate))+
+  facet_wrap(.~iso_code,nrow = 2,ncol=3)+
+  geom_hline(yintercept = c(0,50),linetype=2)+
+  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+  guides(fill=guide_legend(title = "Heat Treatment"))+
+ geom_text(data=sig_codes_heat_trt,aes(x=Percentage,y=105,label=sig_code,group=heat),position = position_jitterdodge(jitter.width = 0.05))+
+  ylab("Percent Inhibition (%)")+
+  #geom_segment(data=sig_codes_heat_trt,aes(x=x,xend=xend,y=100,yend=100),inherit.aes = FALSE)+
+  xlab("Isolate")
+
+```
+
