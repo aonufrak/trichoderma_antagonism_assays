@@ -1,0 +1,50 @@
+---
+title: "trichoderma_phylogeny"
+output: html_document
+date: "2024-03-18"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Loading Packages
+
+```{r,warning=FALSE,message=FALSE}
+library(msa)
+library(phangorn)
+```
+
+
+# Making Phylogenetic Tree
+
+```{r}
+
+tricho_sequences<-readDNAStringSet("~/Google Drive/My Drive/utk_project/trichoderma_antagonism_manuscript/trichoderma_refseq_trichomark")
+
+tricho_alignment<-msa(tricho_sequences,method = "ClustalW")
+
+tricho_alignment_phydat<-msaConvert(tricho_alignment,"phangorn::phyDat")
+
+names(tricho_alignment_phydat)<-sub(" trans.*","",names(tricho_alignment_phydat))
+names(tricho_alignment_phydat)<-sub("_tef1_large","",names(tricho_alignment_phydat))
+
+tricho.dist<-dist.ml(tricho_alignment_phydat)
+
+tricho_upgma_tree<-upgma(tricho.dist)
+
+tricho_upgma_tree_fit<-pml(tricho_upgma_tree,tricho_alignment_phydat,k=4)
+
+tricho_optim_fit<-optim.pml(tricho_upgma_tree_fit,optNni = TRUE,optBf = TRUE,optQ = TRUE,optInv = TRUE,optGamma = TRUE)
+
+tricho_optim_fit_bs<-bootstrap.pml(tricho_optim_fit,bs=1000,optNni=TRUE)
+
+tipcols<-c(ifelse(grepl("TN|NGM|KRL",tricho_optim_fit$tree$tip.label),"red","black"))
+
+
+plotBS(tricho_optim_fit$tree,tricho_optim_fit_bs,p=80,bs.adj=c(1.2,1.2),digits = 0,tip.color=tipcols)
+
+```
