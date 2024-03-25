@@ -2,6 +2,7 @@
 title: "trichoderma_phylogeny"
 output: html_document
 date: "2024-03-18"
+output: rmdformats::downcute
 editor_options: 
   chunk_output_type: console
 ---
@@ -16,35 +17,62 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r,warning=FALSE,message=FALSE}
 library(msa)
 library(phangorn)
+library(ggtree)
 ```
 
 
 # Making Phylogenetic Tree
 
 ```{r}
-
+# Reading in fasta file. 
 tricho_sequences<-readDNAStringSet("~/Google Drive/My Drive/utk_project/trichoderma_antagonism_manuscript/trichoderma_refseq_trichomark")
 
+# Generating an alignment using the msa function with the ClustalW method. 
 tricho_alignment<-msa(tricho_sequences,method = "ClustalW")
 
+# Converting to a phydat object.
 tricho_alignment_phydat<-msaConvert(tricho_alignment,"phangorn::phyDat")
 
+# Cleaning up tip names to make display on tree neater. 
 names(tricho_alignment_phydat)<-sub(" trans.*","",names(tricho_alignment_phydat))
 names(tricho_alignment_phydat)<-sub("_tef1_large","",names(tricho_alignment_phydat))
+names(tricho_alignment_phydat)<-sub("Trichoderma","T.",names(tricho_alignment_phydat))
 
+
+# Computing distances between sequences using the maximum likelihood method.
 tricho.dist<-dist.ml(tricho_alignment_phydat)
 
+# Generating a UPGMA tree based on the distances generated above. 
 tricho_upgma_tree<-upgma(tricho.dist)
 
+# Calculating likelihood of the tree using 4 intervals for the gamma distribution
 tricho_upgma_tree_fit<-pml(tricho_upgma_tree,tricho_alignment_phydat,k=4)
 
+# Optimizing the model
 tricho_optim_fit<-optim.pml(tricho_upgma_tree_fit,optNni = TRUE,optBf = TRUE,optQ = TRUE,optInv = TRUE,optGamma = TRUE)
 
+# Bootstrapping the tree
 tricho_optim_fit_bs<-bootstrap.pml(tricho_optim_fit,bs=1000,optNni=TRUE)
 
+
+
+# Creating a vector that specifies that isolate names from the study should be red and those from ncbi should be in black on the phylogeny
 tipcols<-c(ifelse(grepl("TN|NGM|KRL",tricho_optim_fit$tree$tip.label),"red","black"))
 
+# Plotting the phylogeny
+tricho_tree_plot<-plotBS(tricho_optim_fit$tree,tricho_optim_fit_bs,p=80,bs.adj=c(1.2,1.2),digits = 0,tip.color=tipcols)
 
-plotBS(tricho_optim_fit$tree,tricho_optim_fit_bs,p=80,bs.adj=c(1.2,1.2),digits = 0,tip.color=tipcols)
+tricho_optim_fit$tree$node.label<-tricho_tree_plot$node.label
+tricho_optim_fit$tree$node.label<-round(ifelse(tricho_tree_plot$node.label>90,tricho_tree_plot$node.label,NA))
+tricho_optim_fit_node_color<-ifelse(tricho_tree_plot$node.label>90,"black",NA)
+
+
+ggtree(tricho_optim_fit$tree,aes(x,y))+
+  geom_tree()+
+  theme_tree()+
+  geom_tiplab(size=2,color=tipcols)+
+  #geom_nodelab(size=2)+
+  geom_nodepoint(color=tricho_optim_fit_node_color)+
+  xlim(0,2)
 
 ```
