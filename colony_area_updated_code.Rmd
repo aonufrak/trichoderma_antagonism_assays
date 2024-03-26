@@ -284,7 +284,7 @@ tricho_juglone_sig_codes<-read.table("/Users/aarononfurak/Library/CloudStorage/G
 tricho_juglone_sig_codes$Concentration<-as.factor(tricho_juglone_sig_codes$Concentration)
 
 # Plotting data in ggplot
-ggplot(data=beauveria.trichoderma.juglone_inhibition_frames,aes(x=Concentration,y=percent_inhibition,fill=Concentration))+
+juglone_summaries<-ggplot(data=beauveria.trichoderma.juglone_inhibition_frames,aes(x=Concentration,y=percent_inhibition,fill=Concentration))+
 geom_boxplot(outlier.shape=NA)+
   geom_jitter()+
   facet_wrap(.~isolate,nrow = 4,ncol=4)+
@@ -295,6 +295,9 @@ geom_boxplot(outlier.shape=NA)+
   ylab("Percent Inhibition (%)")+
   xlab("Concentration (mg/mL)")
 
+juglone_summaries
+
+#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_03.eps",juglone_summaries,dpi = 1200,height=12,width=12)
 
 ```
 
@@ -347,6 +350,7 @@ Below I plot the results for the second trial of dual-plate assays. This trial i
 dual_plate_trial_2$GM<-sub("CAGM17-1","CA Gm17-1",dual_plate_trial_2$GM)
 dual_plate_trial_2$GM<-sub("ORGM62-3","OR Gm62-3",dual_plate_trial_2$GM)
 dual_plate_trial_2$GM<-sub("TNGM17","TN Gm17",dual_plate_trial_2$GM)
+dual_plate_trial_2$trichoderma<-sub("RootShield","KRL-AG2",dual_plate_trial_2$trichoderma)
 
 # Plotting data in ggplot
 dual_plate_round2<-ggplot(data=dual_plate_trial_2,aes(x=rating,fill=GM))+
@@ -364,7 +368,11 @@ geom_vline(xintercept = 2.5,linetype=2,color="red")+
   dual_plate_round2
 
 
-ggarrange(dual_plate_round_1,dual_plate_round2,ncol=1,nrow=2,labels=c("A","B"))
+dual_plate_assay_plot<-ggarrange(dual_plate_round_1,dual_plate_round2,ncol=1,nrow=2,labels=c("A","B"))
+dual_plate_assay_plot
+
+#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_04.eps",dual_plate_assay_plot,dpi = 1200,height=8,width=12)
+
 ```
 
 # Part 03: Trichoderma Metabolite Assays
@@ -565,7 +573,10 @@ geom_boxplot(outlier.shape=NA)+
   ylab("Percent Inhibition (%)")
 unautoclave_pi
 
-ggarrange(unautoclave_pi,autoclave_pi,nrow=2,common.legend = TRUE,labels=c("Non-autoclaved","Autoclaved"))
+metabolite_summary_results<-ggarrange(unautoclave_pi,autoclave_pi,nrow=2,common.legend = TRUE,labels=c("Non-autoclaved","Autoclaved"))
+metabolite_summary_results
+
+#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_05.eps",metabolite_summary_results,dpi = 1200,height=8,width=14)
 
 ```
 
