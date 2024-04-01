@@ -576,7 +576,7 @@ unautoclave_pi
 metabolite_summary_results<-ggarrange(unautoclave_pi,autoclave_pi,nrow=2,common.legend = TRUE,labels=c("Non-autoclaved","Autoclaved"))
 metabolite_summary_results
 
-#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_05.eps",metabolite_summary_results,dpi = 1200,height=8,width=14)
+#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_05.eps",metabolite_summary_results,dpi = 1200,height=8,width=14,bg="white")
 
 ```
 

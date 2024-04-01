@@ -54,25 +54,32 @@ tricho_optim_fit<-optim.pml(tricho_upgma_tree_fit,optNni = TRUE,optBf = TRUE,opt
 # Bootstrapping the tree
 tricho_optim_fit_bs<-bootstrap.pml(tricho_optim_fit,bs=1000,optNni=TRUE)
 
-
-
 # Creating a vector that specifies that isolate names from the study should be red and those from ncbi should be in black on the phylogeny
 tipcols<-c(ifelse(grepl("TN|NGM|KRL",tricho_optim_fit$tree$tip.label),"red","black"))
 
 # Plotting the phylogeny
 tricho_tree_plot<-plotBS(tricho_optim_fit$tree,tricho_optim_fit_bs,p=80,bs.adj=c(1.2,1.2),digits = 0,tip.color=tipcols)
 
+# Making node label the BS support value from plotBS
 tricho_optim_fit$tree$node.label<-tricho_tree_plot$node.label
+
+# Rounding to nearest whole number. 
 tricho_optim_fit$tree$node.label<-round(ifelse(tricho_tree_plot$node.label>90,tricho_tree_plot$node.label,NA))
+
+# Making a vector in which only those BS values greater than 90 are plotted in ggtree
 tricho_optim_fit_node_color<-ifelse(tricho_tree_plot$node.label>90,"black",NA)
 
-
-ggtree(tricho_optim_fit$tree,aes(x,y))+
+# Plotting phylogeny with ggtree
+tricho_phylo<-ggtree(tricho_optim_fit$tree,aes(x,y))+
   geom_tree()+
   theme_tree()+
   geom_tiplab(size=2,color=tipcols)+
   #geom_nodelab(size=2)+
   geom_nodepoint(color=tricho_optim_fit_node_color)+
   xlim(0,2)
+
+extrafont::font_import()
+
+ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_01.eps",tricho_phylo,dpi = 1200,height=12,width=12)
 
 ```
