@@ -492,25 +492,25 @@ poison_70_auto<-poison_tukey_results_auto$`tricho:Percentage`[grep(".*70.*70.*",
 poison_70_auto[poison_70_auto[,4]<0.05,]
 
 # Creating a data frame that has all of the significance lettering for ggplot
-sig_codes_auto<-data.frame(Percentage=c(rep("30%",7),rep("50%",7),rep("70%",7)),TI=c(rep(c("A","B","C","D","E","F","PDA"),3)),sig_code=c("A","B","CD","AD","A","C","A",
-                                                                                                                                         "CD","B","C","DE","AE","C","A",
-                                                                                                                                         "CD","B","CD","CD","D","C","A"))
+sig_codes_auto<-data.frame(Percentage=c(rep("30%",7),rep("50%",7),rep("70%",7)),TI=c(rep(c("PDA","TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66"),3)),sig_code=c("A","A","B","CD","AC","A","D",
+                                            "A","BD","C","D","BE","AE","D",
+                                            "A","BC","D","BC","BC","B","C"))
 
 # Converting isolate IDs to a factor
-poison_percent_inhibition_autoclave$iso_code<-factor(poison_percent_inhibition_autoclave$iso_code,levels=c("TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66","PDA"))
+poison_percent_inhibition_autoclave$iso_code<-factor(poison_percent_inhibition_autoclave$iso_code,levels=c("PDA","TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66"))
 
 # Changing RootShield name for consistency with the manuscript
 poison_percent_inhibition_autoclave$tricho<-sub("RootShield","KRL-AG2",poison_percent_inhibition_autoclave$tricho)
 
 # Plotting results in ggplot
-autoclave_pi<-ggplot(data=poison_percent_inhibition_autoclave,aes(x=tricho,y=percent_inhibition,fill=iso_code))+
+autoclave_pi<-ggplot(data=poison_percent_inhibition_autoclave,aes(x=iso_code,y=percent_inhibition,fill=iso_code))+
 geom_boxplot(outlier.shape=NA)+
   geom_point(position = position_jitterdodge(jitter.width = 0.05),color="black",aes(shape=Isolate))+
   facet_wrap(.~Percentage,nrow = 1,ncol=3)+
   geom_hline(yintercept = c(0,50),linetype=2)+
   theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
   geom_text(data=sig_codes_auto,aes(x=TI,y=105,label=sig_code),inherit.aes = FALSE)+
-  scale_x_discrete(labels=c("TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66","PDA"))+
+  scale_x_discrete(labels=c("PDA","TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66"))+
    guides(fill=guide_legend(title = "Trichoderma spp. Isolate"),shape=guide_legend(title="Geosmithia morbida Isolate"))+
   xlab("Trichoderma spp. Isolate")+
   ylab("Percent Inhibition (%)")
@@ -549,25 +549,25 @@ poison_70_unauto<-poison_tukey_results_unauto$`tricho:Percentage`[grep(".*70.*70
 poison_70_unauto[poison_70_unauto[,4]<0.05,]
 
 # Creating a data frame that has all of the significance lettering for ggplot
-sig_codes_unauto<-data.frame(Percentage=c(rep("30%",7),rep("50%",7),rep("70%",7)),TI=c(rep(c("A","B","C","D","E","F","PDA"),3)),sig_code=c("AD","B","CD","ACD","A","C","A",
-                                                                                                                                           "ACD","B","CD","ACD","ACD","C","A",
-                                                                                                                                           "D","B","C","C","AD","C","A"))
+sig_codes_unauto<-data.frame(Percentage=c(rep("30%",7),rep("50%",7),rep("70%",7)),TI=c(rep(c("PDA","TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66"),3)),sig_code=c("A","AB","C","BD","ABD","A","D",
+                                                                                                                                           "A","AC","B","CD","C","C","D",
+                                                                                                                                           "A","A","B","C","C","A","C"))
 
 # Converting isolate IDs to a factor
-poison_percent_inhibition_unautoclave$iso_code<-factor(poison_percent_inhibition_unautoclave$iso_code,levels=c("TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66","PDA"))
+poison_percent_inhibition_unautoclave$iso_code<-factor(poison_percent_inhibition_unautoclave$iso_code,levels=c("PDA","TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66"))
 
 # Changing RootShield name for consistency with the manuscript
 poison_percent_inhibition_unautoclave$tricho<-sub("RootShield","KRL-AG2",poison_percent_inhibition_unautoclave$tricho)
 
 # Plotting results in ggplot
-unautoclave_pi<-ggplot(data=poison_percent_inhibition_unautoclave,aes(x=tricho,y=percent_inhibition,fill=iso_code))+
+unautoclave_pi<-ggplot(data=poison_percent_inhibition_unautoclave,aes(x=iso_code,y=percent_inhibition,fill=iso_code))+
 geom_boxplot(outlier.shape=NA)+
   geom_point(position = position_jitterdodge(jitter.width = 0.05),color="black",aes(shape=Isolate))+
   facet_wrap(.~Percentage,nrow = 1,ncol=3)+
   geom_hline(yintercept = c(0,50),linetype=2)+
   theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank(),axis.title.x = element_blank())+
   geom_text(data=sig_codes_unauto,aes(x=TI,y=105,label=sig_code),inherit.aes = FALSE)+
-  scale_x_discrete(labels=c("TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66","PDA"))+
+  scale_x_discrete(labels=c("PDA","TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66"))+
   guides(fill=guide_legend(title = "Trichoderma spp. Isolate"),shape=guide_legend(title="Geosmithia morbida Isolate"))+
    xlab("Trichoderma spp. Isolate")+
   ylab("Percent Inhibition (%)")
