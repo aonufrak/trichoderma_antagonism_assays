@@ -54,11 +54,14 @@ tricho_optim_fit<-optim.pml(tricho_upgma_tree_fit,optNni = TRUE,optBf = TRUE,opt
 # Bootstrapping the tree
 tricho_optim_fit_bs<-bootstrap.pml(tricho_optim_fit,bs=1000,optNni=TRUE)
 
+
 # Creating a vector that specifies that isolate names from the study should be red and those from ncbi should be in black on the phylogeny
 tipcols<-c(ifelse(grepl("TN|NGM|KRL",tricho_optim_fit$tree$tip.label),"red","black"))
 
 # Plotting the phylogeny
 tricho_tree_plot<-plotBS(tricho_optim_fit$tree,tricho_optim_fit_bs,p=80,bs.adj=c(1.2,1.2),digits = 0,tip.color=tipcols)
+
+tricho_tree_plot$edge.length
 
 # Making node label the BS support value from plotBS
 tricho_optim_fit$tree$node.label<-tricho_tree_plot$node.label
@@ -76,7 +79,9 @@ tricho_phylo<-ggtree(tricho_optim_fit$tree,aes(x,y))+
   geom_tiplab(size=2,color=tipcols)+
   #geom_nodelab(size=2)+
   geom_nodepoint(color=tricho_optim_fit_node_color)+
+  geom_treescale(x = 0,y=-2)+
   xlim(0,2)
+tricho_phylo
 
 extrafont::font_import()
 

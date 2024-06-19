@@ -284,20 +284,22 @@ tricho_juglone_sig_codes<-read.table("/Users/aarononfurak/Library/CloudStorage/G
 tricho_juglone_sig_codes$Concentration<-as.factor(tricho_juglone_sig_codes$Concentration)
 
 # Plotting data in ggplot
-juglone_summaries<-ggplot(data=beauveria.trichoderma.juglone_inhibition_frames,aes(x=Concentration,y=percent_inhibition,fill=Concentration))+
+juglone_summaries<-ggplot(data=beauveria.trichoderma.juglone_inhibition_frames,aes(x=Concentration,y=percent_inhibition))+
 geom_boxplot(outlier.shape=NA)+
   geom_jitter()+
   facet_wrap(.~isolate,nrow = 4,ncol=4)+
   geom_hline(yintercept = c(0,50),linetype=2)+
-  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
- geom_text(data=tricho_juglone_sig_codes,aes(x=Concentration,y=110,label=Code),inherit.aes = FALSE)+
+ geom_text(data=tricho_juglone_sig_codes,aes(x=Concentration,y=110,label=Code,fontface="bold"),inherit.aes = FALSE)+
   scale_y_continuous(limits=c(-50,110),breaks=c(-50,-25,0,25,50,75,100))+
   ylab("Percent Inhibition (%)")+
-  xlab("Concentration (mg/mL)")
+  xlab(bquote(bold('Concentration'~(mg~'*'~ml^-1))))+
+  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank(),strip.text.x = element_text(
+        size = 12, face = "bold"
+        ),axis.text=element_text(face="bold",size=12),axis.title = element_text(size=12,face="bold"))
 
 juglone_summaries
 
-#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_03.eps",juglone_summaries,dpi = 1200,height=12,width=12)
+#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal_revision_03//figures/figure_03.eps",juglone_summaries,dpi = 1200,height=12,width=12)
 
 ```
 
@@ -329,11 +331,13 @@ dual_plate_trial_1$Isolate<-sub("Rootshield","KRL-AG2",dual_plate_trial_1$Isolat
 # Plotting data in ggplot
 dual_plate_round_1<-ggplot(data=dual_plate_trial_1,aes(x=Rating))+
  geom_histogram(color="black",binwidth = 0.5)+
-  geom_vline(xintercept = 2.5,linetype=2,color="red")+
+  geom_vline(xintercept = 2.5,linetype=2,color="black")+
   facet_wrap(.~Isolate,scales="free_x",nrow =3 ,ncol=5)+
-    theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+    theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank(),axis.title=element_text(size=12,face="bold"),axis.text=element_text(size=12,face="bold"),strip.text.x = element_text(
+        size = 12, face = "bold"
+        ))+
   xlab("Antagonism Ranking")+
-  ylab("Count")+
+  ylab("Frequency")+
   scale_x_continuous(limits=c(0,5),breaks=c(1,2,3,4))+
   scale_y_continuous(limits=c(0,5),breaks=c(1,2,3,4))+
   coord_flip()
@@ -356,11 +360,14 @@ dual_plate_trial_2$trichoderma<-sub("RootShield","KRL-AG2",dual_plate_trial_2$tr
 dual_plate_round2<-ggplot(data=dual_plate_trial_2,aes(x=rating,fill=GM))+
   geom_histogram(color="black",binwidth = 0.5)+
  # geom_point(data=dual_plate_trial_2,position=position_dodge(width=0.75),aes(x=GM,y=rating))+
-geom_vline(xintercept = 2.5,linetype=2,color="red")+
+geom_vline(xintercept = 2.5,linetype=2,color="black")+
   facet_wrap(.~trichoderma,scales="free_x")+
-    theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+    theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank(),axis.title=element_text(size=12,face="bold"),axis.text=element_text(size=12,face="bold"),strip.text.x = element_text(
+        size = 12, face = "bold"
+        ))+
+  scale_fill_grey()+
   xlab("Antagonism Ranking")+
-  ylab("Count")+
+  ylab("Frequency")+
   scale_x_continuous(limits=c(0,5),breaks=c(1,2,3,4))+
   scale_y_continuous(limits=c(0,16),breaks=c(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15))+
   coord_flip()
@@ -368,10 +375,10 @@ geom_vline(xintercept = 2.5,linetype=2,color="red")+
   dual_plate_round2
 
 
-dual_plate_assay_plot<-ggarrange(dual_plate_round_1,dual_plate_round2,ncol=1,nrow=2,labels=c("A","B"))
+dual_plate_assay_plot<-ggarrange(dual_plate_round_1,dual_plate_round2,ncol=1,nrow=2,labels=c("a","b"))
 dual_plate_assay_plot
 
-#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_04.eps",dual_plate_assay_plot,dpi = 1200,height=8,width=12)
+ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal_revision_03/figures/figure_04.eps",dual_plate_assay_plot,dpi = 1200,height=10,width=14)
 
 ```
 
@@ -384,6 +391,9 @@ Importing data into R. The following data frames are used for the analyses:
 ```{r}
 # Loading in the poison agar data
 poison_agar_area<-read.table("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/raw_data/colony_area_poison_agar.txt",header=TRUE,sep='\t',na.strings = "NA")
+
+poison_agar_area<-read.table("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal_revision_03/code_for_manuscript_revision/raw_data_with_excess_control.txt",header=TRUE,sep='\t',na.strings = "NA")
+
 ```
 
 ## Part 03.1: Trichoderma Metabolite Assays: Data Formatting
@@ -459,6 +469,9 @@ nrow(poison_percent_inhibition_autoclave)
 # Creating an object for only the non-autoclaved samples
 poison_percent_inhibition_unautoclave_no_pda<-poison_percent_inhibition_df[grep("Unautoclave",poison_percent_inhibition_df$heat),]
 poison_percent_inhibition_unautoclave<-rbind(poison_percent_inhibition_unautoclave_no_pda,poison_percent_inhibition_autoclave[grep("PDA",poison_percent_inhibition_autoclave$tricho),])
+
+nrow(poison_percent_inhibition_unautoclave)
+
 ```
 
 ### Part 03.2 Autoclaved samples
@@ -503,12 +516,14 @@ poison_percent_inhibition_autoclave$iso_code<-factor(poison_percent_inhibition_a
 poison_percent_inhibition_autoclave$tricho<-sub("RootShield","KRL-AG2",poison_percent_inhibition_autoclave$tricho)
 
 # Plotting results in ggplot
-autoclave_pi<-ggplot(data=poison_percent_inhibition_autoclave,aes(x=iso_code,y=percent_inhibition,fill=iso_code))+
+autoclave_pi<-ggplot(data=poison_percent_inhibition_autoclave,aes(x=iso_code,y=percent_inhibition))+
 geom_boxplot(outlier.shape=NA)+
   geom_point(position = position_jitterdodge(jitter.width = 0.05),color="black",aes(shape=Isolate))+
   facet_wrap(.~Percentage,nrow = 1,ncol=3)+
   geom_hline(yintercept = c(0,50),linetype=2)+
-  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank())+
+  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank(),axis.title=element_text(size=12,face="bold"),axis.text=element_text(size=12,face="bold"),strip.text.x = element_text(
+        size = 12, face = "bold"
+        ))+
   geom_text(data=sig_codes_auto,aes(x=TI,y=105,label=sig_code),inherit.aes = FALSE)+
   scale_x_discrete(labels=c("PDA","TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66"))+
    guides(fill=guide_legend(title = "Trichoderma spp. Isolate"),shape=guide_legend(title="Geosmithia morbida Isolate"))+
@@ -560,12 +575,14 @@ poison_percent_inhibition_unautoclave$iso_code<-factor(poison_percent_inhibition
 poison_percent_inhibition_unautoclave$tricho<-sub("RootShield","KRL-AG2",poison_percent_inhibition_unautoclave$tricho)
 
 # Plotting results in ggplot
-unautoclave_pi<-ggplot(data=poison_percent_inhibition_unautoclave,aes(x=iso_code,y=percent_inhibition,fill=iso_code))+
+unautoclave_pi<-ggplot(data=poison_percent_inhibition_unautoclave,aes(x=iso_code,y=percent_inhibition))+
 geom_boxplot(outlier.shape=NA)+
   geom_point(position = position_jitterdodge(jitter.width = 0.05),color="black",aes(shape=Isolate))+
   facet_wrap(.~Percentage,nrow = 1,ncol=3)+
   geom_hline(yintercept = c(0,50),linetype=2)+
-  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank(),axis.title.x = element_blank())+
+  theme(panel.grid=element_blank(),panel.background = element_blank(),panel.border = element_rect(fill=NA),strip.background = element_blank(),axis.title.x = element_blank(),axis.title=element_text(size=12,face="bold"),axis.text=element_text(size=12,face="bold"),strip.text.x = element_text(
+        size = 12, face = "bold"
+        ))+
   geom_text(data=sig_codes_unauto,aes(x=TI,y=105,label=sig_code),inherit.aes = FALSE)+
   scale_x_discrete(labels=c("PDA","TN3-21","TN4-47","KRL-AG2","TN4-40","TN3-61","TN1-66"))+
   guides(fill=guide_legend(title = "Trichoderma spp. Isolate"),shape=guide_legend(title="Geosmithia morbida Isolate"))+
@@ -576,18 +593,18 @@ unautoclave_pi
 metabolite_summary_results<-ggarrange(unautoclave_pi,autoclave_pi,nrow=2,common.legend = TRUE,labels=c("Non-autoclaved","Autoclaved"))
 metabolite_summary_results
 
-#ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal/figures/figure_05.eps",metabolite_summary_results,dpi = 1200,height=8,width=14,bg="white")
+ggsave("/Users/aarononfurak/Library/CloudStorage/GoogleDrive-onufrak.aaron@gmail.com/My Drive/utk_project/trichoderma_antagonism_manuscript/manuscript_versions/manuscript_biocontrol_journal_revision_03/figures/figure_05.eps",metabolite_summary_results,dpi = 1200,height=10,width=18,bg="white")
 
 ```
 
 ### Part 03.4 Assessing effects of heat treatments
 
-```{r,eval=FALSE}
+```{r,eval=TRUE}
 # Removing the PDA control because it does not receive heat treatment
-poison_percent_inhibition_df_no_pda<-poison_percent_inhibition_df[grep("PDA",poison_percent_inhibition_df$tricho,invert=TRUE),]
+poison_percent_inhibition_df_no_pda<-poison_percent_inhibition_df[grep("PDA|water",poison_percent_inhibition_df$tricho,invert=TRUE),]
 
 # Performing ANOVA
-autoclave_aov<-aov(percent_inhibition~heat*tricho*Percentage+Isolate*tricho*Percentage,data=poison_percent_inhibition_df_no_pda)
+autoclave_aov<-aov(percent_inhibition~heat*tricho*Percentage*Isolate,data=poison_percent_inhibition_df_no_pda)
 
 # Assessing model assumptions
 par(mfrow=c(2,2))
